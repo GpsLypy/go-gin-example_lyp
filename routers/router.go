@@ -1,23 +1,36 @@
 package routers
 
 import (
-	"github.com/EDDYCJY/go-gin-example/pkg/setting"
+	_ "github.com/EDDYCJY/go-gin-example/docs"
+	"github.com/EDDYCJY/go-gin-example/middleware/jwt"
+	"github.com/EDDYCJY/go-gin-example/pkg/export"
+	"github.com/EDDYCJY/go-gin-example/pkg/qrcode"
+	"github.com/EDDYCJY/go-gin-example/pkg/upload"
+
+	//"github.com/EDDYCJY/go-gin-example/pkg/setting"
+	"net/http"
+
+	"github.com/EDDYCJY/go-gin-example/routers/api"
 	v1 "github.com/EDDYCJY/go-gin-example/routers/api/v1"
 	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
 
 func InitRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	gin.SetMode(setting.RunMode)
-	// r.GET("/test", func(c *gin.Context) {
-	// 	//gin.H{…}：就是一个map[string]interface{}
-	// 	c.JSON(200, gin.H{
-	// 		"message": "test",
-	// 	})
-	// })
+	//gin.SetMode(setting.RunMode)
+	r.StaticFS("/upload/images", http.Dir(upload.GetImageFullPath()))
+	r.StaticFS("/export", http.Dir(export.GetExcelFullPath()))
+	r.StaticFS("/qrcode", http.Dir(qrcode.GetQrCodeFullPath()))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/auth", api.GetAuth)
+	r.POST("/upload", api.UploadImage)
 	apiv1 := r.Group("api/v1")
+
+	apiv1.Use(jwt.JWT())
 	{
 		apiv1.GET("/tags", v1.GetTags)
 		apiv1.POST("/tags", v1.AddTag)
@@ -34,6 +47,11 @@ func InitRouter() *gin.Engine {
 		apiv1.PUT("/articles/:id", v1.EditArticle)
 		//删除指定文章
 		apiv1.DELETE("/articles/:id", v1.DeleteArticle)
+		apiv1.POST("/articles/poster/generate", v1.GenerateArticlePoster)
+		//导出标签
+		r.POST("/tags/export", v1.ExportTag)
+		//导入标签
+		r.POST("/tags/import", v1.ImportTag)
 	}
 
 	return r
